@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { parseCookies } from '@/helpers/index'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import Link from 'next/link'
@@ -7,7 +8,7 @@ import Layout from '@/components/Layout'
 import { API_URL } from '@/config/index'
 import styles from '@/styles/Form.module.css'
 
-export default function AddEventsPage() {
+export default function AddEventsPage({ token }) {
   const router = useRouter()
 
   const [ values, setValues ] = useState({
@@ -29,25 +30,30 @@ export default function AddEventsPage() {
       toast.error('Please fill in all fields')
     }
 
-    const res = await fetch(`${API_URL}/events`, {
+    const res = await fetch(`${ API_URL }/events`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify(values)
     })
 
-    if(!res.ok) {
+    if (!res.ok) {
+      if (res.status === 403 || res.status === 401) {
+        toast.error('Unauthorized')
+        return
+      }
       toast.error('Something Went Wrong')
     } else {
       const evt = await res.json()
-      await router.push(`/events/${evt.slug}`)
+      await router.push(`/events/${ evt.slug }`)
     }
   }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setValues({...values, [name]: value})
+    setValues({ ...values, [name]: value })
   }
 
   return (
@@ -138,4 +144,14 @@ export default function AddEventsPage() {
       </form>
     </Layout>
   )
+}
+
+export async function getServerSideProps({ req }) {
+  const { token } = parseCookies(req)
+
+  return {
+    props: {
+      token
+    }
+  }
 }
